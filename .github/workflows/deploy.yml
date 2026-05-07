@@ -1,0 +1,44 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: JDK 17 설정
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle 빌드
+        run: ./gradlew bootJar
+
+      - name: Docker 이미지 빌드 및 푸시
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/together-server .
+          docker push ${{ secrets.DOCKER_USERNAME }}/together-server
+
+      - name: EC2 배포
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            docker pull ${{ secrets.DOCKER_USERNAME }}/together-server
+            docker stop together-server || true
+            docker rm together-server || true
+            docker run -d \
+              --name together-server \
+              -p 8080:8080 \
+              --restart always \
+              ${{ secrets.DOCKER_USERNAME }}/together-server
