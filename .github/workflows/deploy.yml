@@ -42,6 +42,6 @@ jobs:
             docker rm together-server || true
             docker run -d \
               --name together-server \
-              -p 8080:8080 \
+              -p 9090:9090 \
               --restart always \
               ${{ secrets.DOCKER_USERNAME }}/together-server
