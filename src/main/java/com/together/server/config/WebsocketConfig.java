@@ -14,6 +14,7 @@ public class WebsocketConfig implements WebSocketMessageBrokerConfigurer {
       "http://localhost:1420",   // Tauri dev
       "tauri://localhost",       // Tauri prod (Windows / Linux)
       "https://tauri.localhost", // Tauri prod (macOS / iOS)
+      "http://tauri.localhost",  // Tauri prod (macOS / iOS, http)
   };
 
   @Override
