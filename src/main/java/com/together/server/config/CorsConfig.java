@@ -13,8 +13,9 @@ public class CorsConfig {
   public CorsFilter corsFilter() {
     CorsConfiguration config = new CorsConfiguration();
     config.addAllowedOrigin("http://localhost:1420");   // Tauri dev
-    config.addAllowedOrigin("tauri://localhost");       // Tauri prod (Windows / Linux)
-    config.addAllowedOrigin("https://tauri.localhost"); // Tauri prod (macOS / iOS)
+    config.addAllowedOrigin("tauri://localhost");       // Tauri prod (macOS)
+    config.addAllowedOrigin("https://tauri.localhost"); // Tauri prod (macOS, https)
+    config.addAllowedOrigin("http://tauri.localhost");  // Tauri prod (Windows / Linux)
     config.addAllowedHeader("*");
     config.addAllowedMethod("*");
     config.setAllowCredentials(true);
