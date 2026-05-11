@@ -19,6 +19,11 @@ public class RoomRepository {
     return room != null && room.isFull();
   }
 
+  public boolean containsUser(String roomCode, String userId) {
+    RoomSession room = rooms.get(roomCode);
+    return room != null && room.containsUser(userId);
+  }
+
   public void addUser(String roomCode, UserState user) {
     RoomSession room = rooms.get(roomCode);
     if (room == null) {

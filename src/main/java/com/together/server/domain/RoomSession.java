@@ -15,6 +15,10 @@ public class RoomSession {
     return users.size() >= Character.MAX_ROOM_SIZE;
   }
 
+  public boolean containsUser(String userId) {
+    return users.containsKey(userId);
+  }
+
   public void addUser(UserState user) {
     users.put(user.getUserId(), user);
   }

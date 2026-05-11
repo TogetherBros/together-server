@@ -17,9 +17,10 @@ public class RoomService {
   private final RoomRepository roomRepository;
   private final SimpMessagingTemplate messaging;
 
-  public boolean join(String roomCode, UserState user) {
-    if (roomRepository.isFull(roomCode)) {
-      return false; // 인원 초과
+  public synchronized boolean join(String roomCode, UserState user) {
+    boolean alreadyInRoom = roomRepository.containsUser(roomCode, user.getUserId());
+    if (!alreadyInRoom && roomRepository.isFull(roomCode)) {
+      return false; // 신규 진입자만 차단, 기존 유저 재배정은 허용
     }
     roomRepository.addUser(roomCode, user);
     broadcast(roomCode);
