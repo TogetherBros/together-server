@@ -1,11 +1,13 @@
 package com.together.server.repository;
 
+import com.together.server.domain.Character;
 import com.together.server.domain.RoomSession;
 import com.together.server.domain.UserState;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -61,6 +63,31 @@ public class RoomRepository {
   public Optional<String> findRoomBySessionId(String sessionId) {
     String roomCode = sessionIndex.get(sessionId);
     return Optional.ofNullable(roomCode);
+  }
+
+  public boolean isCharacterTaken(String roomCode, Character character, String excludeUserId) {
+    RoomSession room = rooms.get(roomCode);
+    if (room == null) return false;
+    return room.isCharacterTaken(character, excludeUserId);
+  }
+
+  public List<Character> getTakenCharacters(String roomCode) {
+    RoomSession room = rooms.get(roomCode);
+    if (room == null) return List.of();
+    return room.getUserList().stream()
+        .map(UserState::getCharacter)
+        .collect(Collectors.toList());
+  }
+
+  public Optional<String> findUserIdBySessionId(String sessionId) {
+    String roomCode = sessionIndex.get(sessionId);
+    if (roomCode == null) return Optional.empty();
+    RoomSession room = rooms.get(roomCode);
+    if (room == null) return Optional.empty();
+    return room.getUserList().stream()
+        .filter(u -> u.getSessionId().equals(sessionId))
+        .map(UserState::getUserId)
+        .findFirst();
   }
 
   public List<UserState> getUsers(String roomCode) {

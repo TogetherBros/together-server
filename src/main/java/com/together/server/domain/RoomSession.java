@@ -35,6 +35,12 @@ public class RoomSession {
     return new ArrayList<>(users.values());
   }
 
+  public boolean isCharacterTaken(Character character, String excludeUserId) {
+    return users.values().stream()
+        .filter(u -> !u.getUserId().equals(excludeUserId))
+        .anyMatch(u -> u.getCharacter() == character);
+  }
+
   public boolean isEmpty() {
     return users.isEmpty();
   }

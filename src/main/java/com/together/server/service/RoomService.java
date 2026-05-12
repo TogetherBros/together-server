@@ -1,10 +1,13 @@
 package com.together.server.service;
 
+import com.together.server.domain.Character;
 import com.together.server.domain.ChatMessage;
+import com.together.server.domain.JoinResult;
 import com.together.server.domain.UserState;
 import com.together.server.repository.RoomRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -17,14 +20,24 @@ public class RoomService {
   private final RoomRepository roomRepository;
   private final SimpMessagingTemplate messaging;
 
-  public synchronized boolean join(String roomCode, UserState user) {
+  public synchronized JoinResult join(String roomCode, UserState user, String syncId) {
     boolean alreadyInRoom = roomRepository.containsUser(roomCode, user.getUserId());
-    if (!alreadyInRoom && roomRepository.isFull(roomCode)) {
-      return false; // 신규 진입자만 차단, 기존 유저 재배정은 허용
+
+    if (!alreadyInRoom) {
+      if (roomRepository.isFull(roomCode)) return JoinResult.ROOM_FULL;
+      if (roomRepository.isCharacterTaken(roomCode, user.getCharacter(), user.getUserId())) {
+        return JoinResult.CHARACTER_TAKEN;
+      }
     }
+
     roomRepository.addUser(roomCode, user);
-    broadcast(roomCode);
-    return true;
+    sync(syncId, roomCode);
+
+    if (!alreadyInRoom) {
+      messaging.convertAndSend("/topic/room/" + roomCode + "/join", user);
+    }
+
+    return JoinResult.OK;
   }
 
   public void updateActivity(String roomCode, String userId, String activity) {
@@ -35,30 +48,40 @@ public class RoomService {
         break;
       }
     }
-    broadcast(roomCode);
+    messaging.convertAndSend("/topic/room/" + roomCode + "/activity",
+        (Object) Map.of("userId", userId, "activity", activity));
   }
 
   public void chat(String roomCode, ChatMessage message) {
-    message.setSentAt(LocalDateTime.now()); // 서버에서 시간 주입
+    message.setSentAt(LocalDateTime.now());
     messaging.convertAndSend("/topic/room/" + roomCode + "/chat", message);
-    // 채팅은 유저 목록 broadcast 불필요
   }
 
   public void leave(String roomCode, String userId) {
     roomRepository.removeUser(roomCode, userId);
-    broadcast(roomCode);
+    messaging.convertAndSend("/topic/room/" + roomCode + "/leave",
+        (Object) Map.of("userId", userId));
   }
 
   public void disconnected(String sessionId) {
     Optional<String> roomCode = roomRepository.findRoomBySessionId(sessionId);
     if (roomCode.isPresent()) {
+      String userId = roomRepository.findUserIdBySessionId(sessionId).orElse(null);
       roomRepository.removeBySessionId(sessionId);
-      broadcast(roomCode.get());
+      if (userId != null) {
+        messaging.convertAndSend("/topic/room/" + roomCode.get() + "/leave",
+            (Object) Map.of("userId", userId));
+      }
     }
   }
 
-  private void broadcast(String roomCode) {
+  public List<Character> getTakenCharacters(String roomCode) {
+    return roomRepository.getTakenCharacters(roomCode);
+  }
+
+  private void sync(String syncId, String roomCode) {
+    if (syncId == null || syncId.isBlank()) return;
     List<UserState> users = roomRepository.getUsers(roomCode);
-    messaging.convertAndSend("/topic/room/" + roomCode, users);
+    messaging.convertAndSend("/topic/join-sync/" + syncId, users);
   }
 }
